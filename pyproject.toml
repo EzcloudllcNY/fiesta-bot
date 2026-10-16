@@ -1,0 +1,118 @@
+[project]
+name = "fiesta"
+version = "0.1.0"
+description = "Slack bot that tracks birthdays and helps the team celebrate them"
+readme = "README.md"
+license = "MIT"
+authors = [
+    { name = "Vladyslav Voinov", email = "voinovvladyslav@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "alembic>=1.20.0",
+    "apscheduler>=3.11.3",
+    "python-dotenv>=1.2.3",
+    "rich>=15.0.0",
+    "sentry-sdk>=2.69.2",
+    "slack-bolt>=1.30.0",
+    "sqlmodel>=0.0.42",
+    "typer>=0.27.2",
+]
+
+[project.scripts]
+fiesta = "fiesta.cli:app"
+
+[dependency-groups]
+dev = [
+    "basedpyright>=1.40.1",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.16.7",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.14,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+
+[tool.coverage.run]
+source = ["fiesta"]
+omit = ["*/slack/app.py", "*/__main__.py"]
+
+[tool.ruff]
+line-length = 80
+target-version = "py314"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "F",    # pyflakes: real mistakes — unused names, bad format strings
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "I",    # import sorting
+    "UP",   # pyupgrade: don't write 3.8 in a 3.14 codebase
+    "B",    # bugbear: mutable defaults, shadowed loop vars, except-without-raise-from
+    "C4",   # comprehension rewrites
+    "SIM",  # obvious simplifications
+    "RUF",  # ruff's own checks
+    "PT",   # pytest style
+    "TID",  # no relative imports
+]
+# E712 (`== False`) stays switched on. The repo layer really does need it to build SQL,
+# but those few lines carry an explicit `noqa` so that an accidental `== False` anywhere
+# else still gets caught.
+
+[tool.ruff.lint.per-file-ignores]
+# Alembic writes these; the long lines are its own formatting, not ours.
+"migrations/versions/*" = ["E501"]
+# Tests share fixture names with the fixtures they request, and assert on private state.
+"tests/*" = ["S101"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["fiesta"]
+
+[tool.basedpyright]
+include = ["src", "tests", "migrations"]
+typeCheckingMode = "basic"
+pythonVersion = "3.14"
+venvPath = "."
+venv = ".venv"
+
+# SQLModel is the source of every suppression below, always for the same reason: a model
+# attribute is declared as its Python type (`str`, `datetime | None`) but at runtime it is
+# an InstrumentedAttribute that builds SQL. No stub can describe both, so the checker is
+# wrong about these in a way no rewrite of ours can fix. They are switched off by area,
+# not globally, so the rules still bite everywhere they can catch something real.
+reportMissingTypeStubs = false
+reportUnknownMemberType = false
+reportUnknownVariableType = false
+reportUnknownArgumentType = false
+
+# Alembic wrote these files and will write the next ones. `sqlmodel.sql.sqltypes` is real
+# at runtime but absent from the stubs, and the `op.*` helpers return loosely typed rows.
+[[tool.basedpyright.executionEnvironments]]
+root = "migrations"
+reportAttributeAccessIssue = false
+reportReturnType = false
+
+# `src/fiesta/repo` deliberately has no entry here: it goes through `sqlmodel.col()`,
+# which is the documented way to hand a column to a type checker, so every rule stays on.
+#
+# `__tablename__ = "member"` (the base declares it as `declared_attr`) and
+# `Field(sa_type=enum_column(...))` (declared `type[Any]`, given an `Enum()` instance).
+[[tool.basedpyright.executionEnvironments]]
+root = "src/fiesta/models"
+reportAssignmentType = false
+reportArgumentType = false
+
+# A test reads `repo.get(...).field` straight off an `X | None`. If it is None the test
+# fails on the spot with an AttributeError, which is the outcome the test wanted anyway.
+[[tool.basedpyright.executionEnvironments]]
+root = "tests"
+reportOptionalMemberAccess = false
+reportOptionalOperand = false
+reportOperatorIssue = false
+reportArgumentType = false

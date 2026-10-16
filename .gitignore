@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+# uv cache dir; ruff skips what git ignores
+.uv-cache/
+*.egg-info/
+
+# Tooling
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+
+# Runtime
+.env
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/*.drain.lock
+
+# Session notes
+.remember/

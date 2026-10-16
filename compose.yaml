@@ -1,0 +1,25 @@
+# Production only. Local development runs on the host with `uv run fiesta …`.
+services:
+  fiesta:
+    build:
+      context: .
+      args:
+        IMAGE_TAG: ${IMAGE_TAG:-}
+    image: fiesta-bot:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    env_file: .env
+    # Must match the owner of ./data on the host, since the container is non-root.
+    user: "1000:1000"
+    volumes:
+      # A bind mount rather than a named volume: backing up is `cp` and inspecting is
+      # `sqlite3 data/fiesta.db`, neither of which needs the container running.
+      #
+      # Linux hosts only. Bind mounts under Docker Desktop on macOS and Windows go
+      # through a FUSE layer that does not implement POSIX advisory locking correctly,
+      # which can corrupt SQLite. Switch to a named volume if this ever moves there.
+      - ./data:/app/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
